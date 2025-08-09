@@ -34,12 +34,7 @@ func (h *Handler) CreateOrder(c echo.Context) error {
 }
 
 func (h *Handler) GetAllOrdres(c echo.Context) error {
-	// Сначала пробуем из кэша
-	cached := h.kafka.GetAllFromCache()
-	if len(cached) > 0 {
-		resp := response.ToOrderResponseList(cached, len(cached), 1, len(cached))
-		return c.JSON(http.StatusOK, resp)
-	}
+
 	// Фолбек в БД
 	var orders []models.Order
 	if err := h.storage.Db.Preload("Delivery").Preload("Payment").Preload("Items").Find(&orders).Error; err != nil {
@@ -54,9 +49,6 @@ func (h *Handler) GetAllOrdres(c echo.Context) error {
 
 func (h *Handler) GetOrderByID(c echo.Context) error {
 	orderUID := c.Param("id")
-	if o, ok := h.kafka.GetOrderFromCache(orderUID); ok {
-		return c.JSON(http.StatusOK, response.ToOrderResponse(o))
-	}
 	var order models.Order
 	if err := h.storage.Db.Preload("Delivery").Preload("Payment").Preload("Items").Where("order_uid = ?", orderUID).First(&order).Error; err != nil {
 		return c.JSON(http.StatusNotFound, response.ErrorResponse{
