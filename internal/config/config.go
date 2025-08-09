@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -69,6 +70,20 @@ func NewConfig() *Config {
 
 	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
 		log.Fatalf("cannot read config: %s", err)
+	}
+
+	// Позволяем переопределять брокеры через переменную окружения (для удобства локального/compose запуска)
+	if brokersEnv := os.Getenv("KAFKA_BROKERS"); brokersEnv != "" {
+		// формат: host1:9092,host2:9092
+		var list []string
+		for _, b := range strings.Split(brokersEnv, ",") {
+			if trimmed := strings.TrimSpace(b); trimmed != "" {
+				list = append(list, trimmed)
+			}
+		}
+		if len(list) > 0 {
+			cfg.Kafka.Brokers = list
+		}
 	}
 
 	return &cfg

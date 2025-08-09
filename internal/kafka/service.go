@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"WB2/internal/config"
+	reqdto "WB2/internal/dto/request"
 	"WB2/internal/models"
 	storagepkg "WB2/internal/storage/postgres"
 
@@ -104,10 +105,14 @@ func (s *Service) Close() error {
 
 // messageHandler получает JSON заказа, валидирует, сохраняет в БД и обновляет кэш.
 func (s *Service) messageHandler(data []byte) error {
-	var order models.Order
-	if err := json.Unmarshal(data, &order); err != nil {
-		return fmt.Errorf("unmarshal order: %w", err)
+	// Парсим входящее сообщение в DTO
+	var dto reqdto.CreateOrderRequest
+	if err := json.Unmarshal(data, &dto); err != nil {
+		return fmt.Errorf("unmarshal dto: %w", err)
 	}
+
+	// Преобразуем в модель
+	order := dto.ToOrderModel()
 
 	// Транзакция: проверяем дубликат по order_uid и создаем новую запись, если её ещё нет
 	err := s.storage.Db.Transaction(func(tx *gorm.DB) error {
@@ -115,7 +120,7 @@ func (s *Service) messageHandler(data []byte) error {
 		if err := tx.Where("order_uid = ?", order.OrderUID).First(&existing).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				// Создаём новый заказ вместе с ассоциациями
-				if err := tx.Create(&order).Error; err != nil {
+				if err := tx.Create(order).Error; err != nil {
 					return fmt.Errorf("create order: %w", err)
 				}
 				return nil
@@ -132,7 +137,7 @@ func (s *Service) messageHandler(data []byte) error {
 
 	// Обновление кэша (пишем с отметкой времени)
 	s.cache.mu.Lock()
-	s.cache.orders[order.OrderUID] = cacheEntry{order: &order, addedAt: time.Now()}
+	s.cache.orders[order.OrderUID] = cacheEntry{order: order, addedAt: time.Now()}
 	s.cache.mu.Unlock()
 
 	return nil

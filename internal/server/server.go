@@ -1,11 +1,13 @@
 package server
 
 import (
-	"WB2/internal/config"
-	storage "WB2/internal/storage/postgres"
 	"context"
 	"log/slog"
 	"net/http"
+
+	"WB2/internal/config"
+	"WB2/internal/kafka"
+	storage "WB2/internal/storage/postgres"
 
 	"github.com/labstack/echo/v4"
 )
@@ -14,6 +16,7 @@ type Server struct {
 	cfg    *config.Config
 	router *echo.Echo
 	server *http.Server
+	kafka  *kafka.Service
 }
 
 func NewServer(cfg *config.Config) *Server {
@@ -23,8 +26,9 @@ func NewServer(cfg *config.Config) *Server {
 	}
 }
 
-func (s *Server) Start(log *slog.Logger, storage *storage.Storage) error {
-	InitRoutes(s.router, log, storage, s.cfg)
+func (s *Server) Start(log *slog.Logger, storage *storage.Storage, kafka *kafka.Service) error {
+	s.kafka = kafka
+	InitRoutes(s.router, log, storage, s.cfg, kafka)
 	s.server = &http.Server{
 		Addr:         ":" + s.cfg.HTTPServer.Port,
 		Handler:      s.router,

@@ -38,7 +38,10 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_DELETE_TOPIC_ENABLE: 'true'
@@ -64,7 +67,7 @@ services:
     build: .
     container_name: wb_api
     ports:
-      - "8081:8080"
+      - "8081:8081"
     environment:
       - CONFIG_PATH=/app/config/config.yaml
       - DB_CONNECTION_STRING=postgres://orders_user:orders_pass@postgres:5432/orders_db?sslmode=disable
@@ -72,7 +75,7 @@ services:
       - DB_USER=orders_user
       - DB_PASSWORD=orders_pass
       - DB_NAME=orders_db
-      - KAFKA_BROKER=kafka:9092
+      - KAFKA_BROKERS=kafka:9092
     volumes:
       - ./config:/app/config
     depends_on:

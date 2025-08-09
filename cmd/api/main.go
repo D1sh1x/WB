@@ -52,14 +52,16 @@ func main() {
 
 	server := server.NewServer(cfg)
 
+	log.Info("Starting HTTP server", slog.String("port", cfg.HTTPServer.Port))
+
 	go func() {
-		if err := server.Start(log, db); err != nil && err != http.ErrServerClosed {
+		if err := server.Start(log, db, kafkaSvc); err != nil && err != http.ErrServerClosed {
 			log.Error("Failed to start server", logger.Err(err))
 			os.Exit(1)
 		}
 	}()
 
-	log.Info("Server started", slog.String("port", cfg.HTTPServer.Port))
+	log.Info("Server started successfully", slog.String("port", cfg.HTTPServer.Port))
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
