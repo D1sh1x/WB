@@ -47,9 +47,8 @@ var (
 func NewConfig() *Config {
 	var cfg Config
 
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("Error loading .env file: %s", err)
-	}
+	//Нужно для отладки в IDE
+	_ = godotenv.Load()
 
 	configPath = os.Getenv("CONFIG_PATH")
 	DB_connection_string = os.Getenv("DB_CONNECTION_STRING")
@@ -59,7 +58,7 @@ func NewConfig() *Config {
 	}
 
 	if DB_connection_string == "" {
-		log.Fatal("DB_connection_string is not set")
+		log.Fatal("DB_CONNECTION_STRING is not set")
 	}
 
 	cfg.Database.DB_CONNECTION_STRING = DB_connection_string
