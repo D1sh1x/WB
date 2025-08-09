@@ -44,8 +44,8 @@ func (s *Storage) CreateOrder(order *models.Order) (string, error) {
 
 // GetAllOrders получает все заказы
 func (s *Storage) GetAllOrders() ([]models.Order, error) {
-	var orders []models.Order
-	if err := s.Db.Find(&orders).Error; err != nil {
+    var orders []models.Order
+    if err := s.Db.Preload("Delivery").Preload("Payment").Preload("Items").Find(&orders).Error; err != nil {
 		return nil, err
 	}
 	return orders, nil

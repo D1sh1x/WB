@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"WB2/internal/cache"
 	"WB2/internal/config"
 	storage "WB2/internal/storage/postgres"
 
@@ -15,17 +16,19 @@ type Server struct {
 	cfg    *config.Config
 	router *echo.Echo
 	server *http.Server
+	cache  *cache.OrderCache
 }
 
-func NewServer(cfg *config.Config) *Server {
+func NewServer(cfg *config.Config, c *cache.OrderCache) *Server {
 	return &Server{
 		cfg:    cfg,
 		router: echo.New(),
+		cache:  c,
 	}
 }
 
 func (s *Server) Start(log *slog.Logger, storage *storage.Storage) error {
-	InitRoutes(s.router, log, storage, s.cfg)
+	InitRoutes(s.router, log, storage, s.cfg, s.cache)
 	s.server = &http.Server{
 		Addr:         ":" + s.cfg.HTTPServer.Port,
 		Handler:      s.router,

@@ -27,6 +27,8 @@ func (h *Handler) CreateOrder(c echo.Context) error {
 			Code:    http.StatusInternalServerError})
 	}
 
+	h.cache.Set(order)
+
 	return c.JSON(http.StatusCreated, response.SuccessResponse{
 		Success: true,
 		Message: "order created",
@@ -36,12 +38,26 @@ func (h *Handler) CreateOrder(c echo.Context) error {
 func (h *Handler) GetAllOrdres(c echo.Context) error {
 
 	// Фолбек в БД
-	var orders []models.Order
-	if err := h.storage.Db.Preload("Delivery").Preload("Payment").Preload("Items").Find(&orders).Error; err != nil {
-		return c.JSON(http.StatusInternalServerError, response.ErrorResponse{
-			Error:   "list_error",
-			Message: err.Error(),
-			Code:    http.StatusInternalServerError})
+	// Сначала пробуем из кэша; если он пуст, читаем из БД и наполняем кэш
+	cached := h.cache.GetAll()
+	if len(cached) == 0 {
+		var orders []models.Order
+		if err := h.storage.Db.Preload("Delivery").Preload("Payment").Preload("Items").Find(&orders).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+				Error:   "list_error",
+				Message: err.Error(),
+				Code:    http.StatusInternalServerError})
+		}
+		for i := range orders {
+			o := orders[i]
+			h.cache.Set(&o)
+		}
+		cached = h.cache.GetAll()
+	}
+	// Преобразуем для ответа
+	orders := make([]models.Order, len(cached))
+	for i := range cached {
+		orders[i] = *cached[i]
 	}
 	resp := response.ToOrderResponseList(orders, len(orders), 1, len(orders))
 	return c.JSON(http.StatusOK, resp)
@@ -49,6 +65,11 @@ func (h *Handler) GetAllOrdres(c echo.Context) error {
 
 func (h *Handler) GetOrderByID(c echo.Context) error {
 	orderUID := c.Param("id")
+	// Сначала кэш
+	if order, ok := h.cache.Get(orderUID); ok {
+		return c.JSON(http.StatusOK, response.ToOrderResponse(order))
+	}
+	// Фолбек в БД
 	var order models.Order
 	if err := h.storage.Db.Preload("Delivery").Preload("Payment").Preload("Items").Where("order_uid = ?", orderUID).First(&order).Error; err != nil {
 		return c.JSON(http.StatusNotFound, response.ErrorResponse{
@@ -56,6 +77,7 @@ func (h *Handler) GetOrderByID(c echo.Context) error {
 			Message: "order not found",
 			Code:    http.StatusNotFound})
 	}
+	h.cache.Set(&order)
 	return c.JSON(http.StatusOK, response.ToOrderResponse(&order))
 }
 
@@ -107,6 +129,8 @@ func (h *Handler) UpdateOrder(c echo.Context) error {
 				Code:    http.StatusInternalServerError})
 		}
 	}
+
+	h.cache.Set(&order)
 
 	return c.JSON(http.StatusOK, response.SuccessResponse{
 		Success: true,
