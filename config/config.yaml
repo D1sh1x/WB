@@ -1,0 +1,13 @@
+env: dev
+http_server:
+  port: "8081"
+  timeout: 5s
+  idle_timeout: 60s
+kafka:
+  brokers:
+    - "kafka:9092"
+  topic: "orders"
+  group_id: "wb-consumer"
+  version: "2.8.0"
+cache:
+  ttl: 10m
