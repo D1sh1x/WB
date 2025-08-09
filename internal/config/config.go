@@ -47,7 +47,7 @@ var (
 func NewConfig() *Config {
 	var cfg Config
 
-	//Нужно для отладки в IDE
+	// Нужно для отладки в IDE: загрузим .env, если есть
 	_ = godotenv.Load()
 
 	configPath = os.Getenv("CONFIG_PATH")

@@ -13,6 +13,7 @@ type Storage struct {
 	Db *gorm.DB
 }
 
+// NewStorage открывает соединение с PostgreSQL и применяет миграции
 func NewStorage(storagePath string) (*Storage, error) {
 	const op = "storage.postgres.NewStorage"
 
@@ -62,7 +63,7 @@ func (s *Storage) GetAllOrders() ([]models.Order, error) {
 	return orders, nil
 }
 
-// GetOrderByID получает заказ по order_uid
+// GetOrderByUID получает заказ по order_uid
 func (s *Storage) GetOrderByUID(orderUID string) (*models.Order, error) {
 	var order models.Order
 	if err := s.Db.Where("order_uid = ?", orderUID).First(&order).Error; err != nil {

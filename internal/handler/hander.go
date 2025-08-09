@@ -7,6 +7,7 @@ import (
 	storage "WB2/internal/storage/postgres"
 )
 
+// Handler реализует обработчики HTTP-запросов и доступ к зависимостям
 type Handler struct {
 	log     *slog.Logger
 	storage *storage.Storage

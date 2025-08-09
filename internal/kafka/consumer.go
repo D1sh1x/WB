@@ -14,6 +14,7 @@ import (
 	"github.com/IBM/sarama"
 )
 
+// Consumer отвечает за чтение сообщений из Kafka и обработку заказов
 type Consumer struct {
 	log   *slog.Logger
 	store *storage.Storage
@@ -66,6 +67,7 @@ type consumerGroupHandler struct {
 func (h *consumerGroupHandler) Setup(sarama.ConsumerGroupSession) error   { return nil }
 func (h *consumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error { return nil }
 
+// ConsumeClaim получает сообщения, валидирует полезную нагрузку и сохраняет заказ в БД с кэшированием
 func (h *consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
 		// ожидаем JSON с полями, соответствующими CreateOrderRequest (кроме автогенерируемого UID/DateCreated)

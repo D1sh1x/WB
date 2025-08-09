@@ -17,6 +17,7 @@ import (
 )
 
 func main() {
+	// Загружаем конфигурацию окружения и приложения
 	cfg := config.NewConfig()
 
 	log := logger.SetupLogger(cfg.Env)
@@ -24,13 +25,14 @@ func main() {
 	log.Info("WB", slog.String("env", cfg.Env))
 	log.Debug("debug message are enabled")
 
+	// Инициализируем хранилище (PostgreSQL) и выполняем миграции
 	db, err := storage.NewStorage(cfg.Database.DB_CONNECTION_STRING)
 	if err != nil {
 		log.Error("Failed to init storage", logger.Err(err))
 		os.Exit(1)
 	}
 
-	// init cache with TTL and warm-up from DB
+	// Инициализируем кэш с TTL и прогреваем из БД
 	orderCache := cache.NewOrderCache(cfg.Cache.TTL)
 	if orders, err := db.GetAllOrders(); err == nil {
 		orderCache.Load(orders)
@@ -39,7 +41,7 @@ func main() {
 		log.Warn("failed to warm cache", logger.Err(err))
 	}
 
-	// start cache cleaner
+	// Запускаем фоновую очистку кэша
 	cleanerCtx, cleanerCancel := context.WithCancel(context.Background())
 	defer cleanerCancel()
 	orderCache.StartCleaner(cleanerCtx)
@@ -48,7 +50,7 @@ func main() {
 
 	log.Info("Starting HTTP server", slog.String("port", cfg.HTTPServer.Port))
 
-	// start HTTP server
+	// Запускаем HTTP-сервер
 	go func() {
 		if err := srv.Start(log, db); err != nil && err != http.ErrServerClosed {
 			log.Error("Failed to start server", logger.Err(err))
@@ -56,7 +58,7 @@ func main() {
 		}
 	}()
 
-	// start Kafka consumer
+	// Запускаем Kafka consumer
 	var consumerCancel context.CancelFunc
 	if len(cfg.Kafka.Brokers) > 0 && cfg.Kafka.Topic != "" && cfg.Kafka.GroupID != "" {
 		ctx, cancel := context.WithCancel(context.Background())

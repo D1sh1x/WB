@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// Server инкапсулирует echo-сервер и конфигурацию
 type Server struct {
 	cfg    *config.Config
 	router *echo.Echo
@@ -27,6 +28,7 @@ func NewServer(cfg *config.Config, c *cache.OrderCache) *Server {
 	}
 }
 
+// Start запускает HTTP-сервер и регистрирует маршруты
 func (s *Server) Start(log *slog.Logger, storage *storage.Storage) error {
 	InitRoutes(s.router, log, storage, s.cfg, s.cache)
 	s.server = &http.Server{
@@ -39,6 +41,7 @@ func (s *Server) Start(log *slog.Logger, storage *storage.Storage) error {
 	return s.server.ListenAndServe()
 }
 
+// Stop останавливает сервер с graceful shutdown
 func (s *Server) Stop(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }

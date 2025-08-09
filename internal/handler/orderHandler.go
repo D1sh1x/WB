@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// CreateOrder создаёт новый заказ, валидирует входные данные и возвращает созданный заказ
 func (h *Handler) CreateOrder(c echo.Context) error {
 	var req request.CreateOrderRequest
 	if err := c.Bind(&req); err != nil {
@@ -44,6 +45,7 @@ func (h *Handler) CreateOrder(c echo.Context) error {
 		Data:    response.ToOrderResponse(order)})
 }
 
+// GetAllOrdres возвращает список заказов, предпочитая кэш, с фолбеком в БД
 func (h *Handler) GetAllOrdres(c echo.Context) error {
 	start := time.Now()
 	// Фолбек в БД
@@ -74,6 +76,7 @@ func (h *Handler) GetAllOrdres(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
+// GetOrderByID возвращает заказ по UID из кэша либо БД
 func (h *Handler) GetOrderByID(c echo.Context) error {
 	orderUID := c.Param("id")
 	// Сначала кэш
@@ -97,6 +100,7 @@ func (h *Handler) GetOrderByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, response.ToOrderResponse(&order))
 }
 
+// UpdateOrder обновляет поля заказа и связанных сущностей
 func (h *Handler) UpdateOrder(c echo.Context) error {
 	var req request.UpdateOrderRequest
 	if err := c.Bind(&req); err != nil {
@@ -162,6 +166,7 @@ func (h *Handler) UpdateOrder(c echo.Context) error {
 		Data:    response.ToOrderResponse(&order)})
 }
 
+// DeleteOrder удаляет заказ и очищает соответствующую запись в кэше
 func (h *Handler) DeleteOrder(c echo.Context) error {
 	var req response.DeleteOrderRequest
 	if err := c.Bind(&req); err != nil {
