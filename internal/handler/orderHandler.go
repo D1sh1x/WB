@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"WB2/internal/dto/request"
 	"WB2/internal/dto/response"
@@ -17,6 +18,14 @@ func (h *Handler) CreateOrder(c echo.Context) error {
 			Error:   "bind_error",
 			Message: err.Error(),
 			Code:    http.StatusBadRequest})
+	}
+	// validate request
+	if err := req.Validate(); err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error:   "validation_error",
+			Message: err.Error(),
+			Code:    http.StatusBadRequest,
+		})
 	}
 
 	order := req.ToOrderModel()
@@ -36,10 +45,12 @@ func (h *Handler) CreateOrder(c echo.Context) error {
 }
 
 func (h *Handler) GetAllOrdres(c echo.Context) error {
-
+	start := time.Now()
 	// Фолбек в БД
 	// Сначала пробуем из кэша; если он пуст, читаем из БД и наполняем кэш
 	cached := h.cache.GetAll()
+	duration := time.Since(start)
+	h.log.Info("cache_get_all_timing", "duration_ms", duration.Milliseconds())
 	if len(cached) == 0 {
 		var orders []models.Order
 		if err := h.storage.Db.Preload("Delivery").Preload("Payment").Preload("Items").Find(&orders).Error; err != nil {
@@ -66,9 +77,14 @@ func (h *Handler) GetAllOrdres(c echo.Context) error {
 func (h *Handler) GetOrderByID(c echo.Context) error {
 	orderUID := c.Param("id")
 	// Сначала кэш
+	start := time.Now()
 	if order, ok := h.cache.Get(orderUID); ok {
+		duration := time.Since(start)
+		h.log.Info("cache_hit", "order_uid", orderUID, "duration_ms", duration.Milliseconds())
 		return c.JSON(http.StatusOK, response.ToOrderResponse(order))
 	}
+	duration := time.Since(start)
+	h.log.Info("cache_miss", "order_uid", orderUID, "duration_ms", duration.Milliseconds())
 	// Фолбек в БД
 	var order models.Order
 	if err := h.storage.Db.Preload("Delivery").Preload("Payment").Preload("Items").Where("order_uid = ?", orderUID).First(&order).Error; err != nil {
@@ -88,6 +104,14 @@ func (h *Handler) UpdateOrder(c echo.Context) error {
 			Error:   "bind_error",
 			Message: err.Error(),
 			Code:    http.StatusBadRequest})
+	}
+	// validate request
+	if err := req.Validate(); err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error:   "validation_error",
+			Message: err.Error(),
+			Code:    http.StatusBadRequest,
+		})
 	}
 
 	var order models.Order
@@ -156,6 +180,8 @@ func (h *Handler) DeleteOrder(c echo.Context) error {
 		})
 	}
 
+	// очистим из кэша
+	h.cache.Delete(uid)
 	return c.JSON(http.StatusOK, response.SuccessResponse{
 		Success: true,
 		Message: "order: " + uid + " deleted",

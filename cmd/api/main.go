@@ -30,14 +30,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	// init cache and warm-up from DB
-	orderCache := cache.NewOrderCache()
+	// init cache with TTL and warm-up from DB
+	orderCache := cache.NewOrderCache(cfg.Cache.TTL)
 	if orders, err := db.GetAllOrders(); err == nil {
 		orderCache.Load(orders)
 		log.Info("cache warmed", slog.Int("orders", len(orders)))
 	} else {
 		log.Warn("failed to warm cache", logger.Err(err))
 	}
+
+	// start cache cleaner
+	cleanerCtx, cleanerCancel := context.WithCancel(context.Background())
+	defer cleanerCancel()
+	orderCache.StartCleaner(cleanerCtx)
 
 	srv := server.NewServer(cfg, orderCache)
 

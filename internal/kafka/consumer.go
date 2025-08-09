@@ -76,6 +76,18 @@ func (h *consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, cl
 			continue
 		}
 
+		// базовая валидация обязательных полей
+		if input.OrderUID == "" {
+			h.log.Error("invalid message: missing order_uid")
+			sess.MarkMessage(msg, "bad_payload")
+			continue
+		}
+		if len(input.Items) == 0 {
+			h.log.Error("invalid message: empty items", slog.String("order_uid", input.OrderUID))
+			sess.MarkMessage(msg, "bad_payload")
+			continue
+		}
+
 		order := toOrderModelFromResponse(&input)
 		if err := h.store.Db.Create(order).Error; err != nil {
 			h.log.Error("failed to save order", slog.String("err", err.Error()))

@@ -31,12 +31,23 @@ func NewStorage(storagePath string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	// Добавим уникальный индекс на order_uid для идемпотентности
+	_ = db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_order_uid ON orders (order_uid)")
+
 	return &Storage{Db: db}, nil
 }
 
 // CreateOrder создает новый заказ со всеми связанными данными и возвращает UID
 func (s *Storage) CreateOrder(order *models.Order) (string, error) {
-	if err := s.Db.Create(order).Error; err != nil {
+	// Транзакция для сохранения агрегата
+	err := s.Db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(order).Error; err != nil {
+			return err
+		}
+		// ассоциации создаются через Create(order) с gorm, но транзакция гарантирует атомарность
+		return nil
+	})
+	if err != nil {
 		return "", err
 	}
 	return order.OrderUID, nil
@@ -44,8 +55,8 @@ func (s *Storage) CreateOrder(order *models.Order) (string, error) {
 
 // GetAllOrders получает все заказы
 func (s *Storage) GetAllOrders() ([]models.Order, error) {
-    var orders []models.Order
-    if err := s.Db.Preload("Delivery").Preload("Payment").Preload("Items").Find(&orders).Error; err != nil {
+	var orders []models.Order
+	if err := s.Db.Preload("Delivery").Preload("Payment").Preload("Items").Find(&orders).Error; err != nil {
 		return nil, err
 	}
 	return orders, nil

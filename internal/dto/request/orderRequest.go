@@ -2,6 +2,8 @@ package request
 
 import (
 	"WB2/internal/models"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -63,6 +65,40 @@ type CreateItemRequest struct {
 	Status      int    `json:"status" validate:"required"`
 }
 
+// Validate валидация CreateOrderRequest
+func (req *CreateOrderRequest) Validate() error {
+	if req.TrackNumber == "" || req.Entry == "" || req.CustomerID == "" {
+		return errors.New("track_number, entry, customer_id are required")
+	}
+	if req.Delivery.Name == "" || req.Delivery.Phone == "" || req.Delivery.Zip == "" || req.Delivery.City == "" || req.Delivery.Address == "" {
+		return errors.New("delivery.name, phone, zip, city, address are required")
+	}
+	if req.Payment.Transaction == "" || req.Payment.Currency == "" || req.Payment.Provider == "" {
+		return errors.New("payment.transaction, currency, provider are required")
+	}
+	if req.Payment.Amount < 1 {
+		return fmt.Errorf("payment.amount must be >= 1")
+	}
+	if req.Payment.PaymentDt <= 0 {
+		return fmt.Errorf("payment.payment_dt must be > 0")
+	}
+	if req.Payment.DeliveryCost < 0 || req.Payment.GoodsTotal < 0 || req.Payment.CustomFee < 0 {
+		return fmt.Errorf("payment costs must be >= 0")
+	}
+	if len(req.Items) == 0 {
+		return errors.New("items must contain at least 1 item")
+	}
+	for i, it := range req.Items {
+		if it.ChrtID == 0 || it.TrackNumber == "" || it.Price < 1 || it.Rid == "" || it.Name == "" || it.TotalPrice < 1 || it.NmID == 0 || it.Brand == "" || it.Status == 0 {
+			return fmt.Errorf("invalid item at index %d", i)
+		}
+		if it.Sale < 0 {
+			return fmt.Errorf("item.sale must be >= 0 at index %d", i)
+		}
+	}
+	return nil
+}
+
 // UpdateOrderRequest - DTO для обновления заказа
 type UpdateOrderRequest struct {
 	OrderUID          string                 `json:"order_uid" validate:"required"`
@@ -119,6 +155,35 @@ type UpdateItemRequest struct {
 	NmID        int    `json:"nm_id"`
 	Brand       string `json:"brand"`
 	Status      int    `json:"status"`
+}
+
+// Validate валидация UpdateOrderRequest (частичная)
+func (req *UpdateOrderRequest) Validate() error {
+	if req.OrderUID == "" {
+		return errors.New("order_uid is required")
+	}
+	if req.Payment != nil {
+		if req.Payment.Amount != 0 && req.Payment.Amount < 1 {
+			return errors.New("payment.amount must be >= 1 if provided")
+		}
+		if req.Payment.DeliveryCost < 0 || req.Payment.GoodsTotal < 0 || req.Payment.CustomFee < 0 {
+			return errors.New("payment costs must be >= 0")
+		}
+	}
+	if len(req.Items) > 0 {
+		for i, it := range req.Items {
+			if it.Price != 0 && it.Price < 1 {
+				return fmt.Errorf("item.price must be >= 1 at index %d", i)
+			}
+			if it.TotalPrice != 0 && it.TotalPrice < 1 {
+				return fmt.Errorf("item.total_price must be >= 1 at index %d", i)
+			}
+			if it.Sale < 0 {
+				return fmt.Errorf("item.sale must be >= 0 at index %d", i)
+			}
+		}
+	}
+	return nil
 }
 
 // ToOrderModel преобразует CreateOrderRequest в models.Order
