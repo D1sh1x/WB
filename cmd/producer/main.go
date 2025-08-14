@@ -25,7 +25,6 @@ func main() {
 	}
 	brokers := strings.Split(brokersEnv, ",")
 
-	// sample payload compatible with OrderResponse
 	payload := response.OrderResponse{
 		OrderUID:        uuid.NewString(),
 		TrackNumber:     "ANDREY",
